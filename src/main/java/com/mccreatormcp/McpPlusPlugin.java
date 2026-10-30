@@ -35,7 +35,8 @@ public class McpPlusPlugin extends JavaPlugin {
 
 	private static final Logger LOG = LogManager.getLogger("MCP Plus");
 
-	public static final String VERSION = "1.0.0";
+	// read from plugin.json, which the build stamps with the release version
+	public static volatile String VERSION = "dev";
 
 	public static final int DEFAULT_STANDALONE_PORT = 3026;
 
@@ -46,6 +47,8 @@ public class McpPlusPlugin extends JavaPlugin {
 
 	public McpPlusPlugin(Plugin plugin) {
 		super(plugin);
+		if (plugin.getInfo() != null && plugin.getInfo().getVersion() != null)
+			VERSION = plugin.getInfo().getVersion();
 
 		addListener(MCreatorMcpLoadedEvent.class, event -> {
 			MCreatorMcp mcp = event.getMCreatorMcp();

@@ -1,0 +1,123 @@
+name: Build and release plugin
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # MCreator source revision the plugin is compiled against (tag, branch or commit).
+  # Override with the repository variable MCREATOR_REF when a new MCreator build is targeted.
+  MCREATOR_REF: ${{ vars.MCREATOR_REF || '2026.3.41718' }}
+
+jobs:
+  build:
+    name: Build plugin
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout plugin
+        uses: actions/checkout@v7
+
+      - name: Set up JetBrains Runtime 25 (same JDK as MCreator)
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25.0.3'
+          distribution: 'jetbrains'
+          java-package: 'jdk+jcef'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore MCreator libraries
+        id: mcreator-cache
+        uses: actions/cache@v5
+        with:
+          path: mcreator-sdk
+          key: mcreator-sdk-${{ env.MCREATOR_REF }}-${{ hashFiles('.github/ci/mcreator-libs.init.gradle') }}
+
+      - name: Build MCreator from source
+        if: steps.mcreator-cache.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch "$MCREATOR_REF" https://github.com/MCreator/MCreator.git mcreator-src \
+            || (git clone https://github.com/MCreator/MCreator.git mcreator-src && git -C mcreator-src checkout "$MCREATOR_REF")
+          cd mcreator-src
+          chmod +x gradlew
+          ./gradlew --no-daemon --init-script ../.github/ci/mcreator-libs.init.gradle jar mcpPlusCopyLibs
+          cd ..
+          mkdir -p mcreator-sdk/lib
+          cp mcreator-src/build/mcpplus-lib/*.jar mcreator-sdk/lib/
+          cp mcreator-src/build/libs/mcreator.jar mcreator-sdk/lib/mcreator.jar
+          echo "$MCREATOR_REF" > mcreator-sdk/REF
+          ls mcreator-sdk/lib | wc -l
+
+      - name: Determine version
+        id: version
+        run: |
+          base=$(sed -n "s/^def baseVersion = '\(.*\)'$/\1/p" build.gradle)
+          echo "version=${base}-build.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Build plugin
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon build -PmcreatorPath="$GITHUB_WORKSPACE/mcreator-sdk" -PbuildNumber="$GITHUB_RUN_NUMBER"
+
+      - name: Verify plugin archive
+        run: |
+          zip=build/dist/mcreator-mcp-plus-${{ steps.version.outputs.version }}.zip
+          test -f "$zip"
+          unzip -l "$zip" | grep -q ' plugin.json$'
+          unzip -l "$zip" | grep -q 'com/mccreatormcp/McpPlusPlugin.class'
+          unzip -p "$zip" plugin.json | grep -q '"version": "${{ steps.version.outputs.version }}"'
+          echo "Plugin archive OK: $zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcreator-mcp-plus-${{ steps.version.outputs.version }}
+          path: build/dist/*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    # only commits that land on main are released, pull requests are just built
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mcreator-mcp-plus-${{ needs.build.outputs.version }}
+          path: dist
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          tag="v${VERSION}"
+          cat > notes.md <<NOTES
+          Automatic build of commit ${GITHUB_SHA::7} on \`main\`, compiled against MCreator \`${MCREATOR_REF}\`.
+
+          **Install:** in MCreator open *Preferences → Plugins → Load plugin*, choose \`mcreator-mcp-plus-${VERSION}.zip\` and restart MCreator.
+          Requires MCreator 2026.3 (build 2026.3.41718 or newer).
+          NOTES
+          gh release create "$tag" dist/*.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "MCreator MCP Plus ${VERSION}" \
+            --notes-file notes.md \
+            --generate-notes \
+            --latest

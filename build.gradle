@@ -3,7 +3,9 @@ plugins {
 }
 
 group = 'com.mccreatormcp'
-version = '1.0.0'
+def baseVersion = '1.0.0'
+// CI passes -PbuildNumber=<run number> so every release has a unique, increasing version
+version = findProperty('buildNumber') ? "${baseVersion}-build.${findProperty('buildNumber')}" : baseVersion
 
 // Folder of an MCreator 2026.3+ installation (the one containing the lib folder with mcreator.jar).
 // Pass it with -PmcreatorPath=... , the MCREATOR_PATH environment variable, or gradle.properties.

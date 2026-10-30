@@ -16,7 +16,8 @@ desactivado, el plugin arranca su propio servidor (tools oficiales + tools del p
 
 ## Instalación
 
-1. Descarga o compila `mcreator-mcp-plus-1.0.0.zip` (ver [Compilar](#compilar)).
+1. Descarga `mcreator-mcp-plus-<versión>.zip` de la última
+   [release](https://github.com/Dasemu/McCreatorMCP/releases/latest), o compílalo tú (ver [Compilar](#compilar)).
 2. En MCreator: **File → Preferences → Plugins → Load plugin** y selecciona el `.zip`, o cópialo a la carpeta de
    plugins del usuario (`~/.mcreator/plugins` en Linux/macOS, `C:\Users\<usuario>\.mcreator\plugins` en Windows).
 3. Reinicia MCreator.
@@ -135,6 +136,25 @@ El resultado queda en `build/dist/mcreator-mcp-plus-<versión>.zip`. Para copiar
 
 También se puede definir `MCREATOR_PATH` como variable de entorno. Gradle debe ejecutarse con un JDK 25, por
 ejemplo con `JAVA_HOME` apuntando a la carpeta `jdk` de MCreator.
+
+## Releases automáticas (CI)
+
+El workflow `.github/workflows/release.yml` se ejecuta en GitHub Actions:
+
+- **Cada push a `main`**: compila el plugin, comprueba que el `.zip` es instalable (contiene `plugin.json` y la
+  clase principal, con la versión correcta) y publica una **release** con el `.zip` adjunto. La versión es
+  `<versión base>-build.<número de ejecución>`, por ejemplo `v1.0.0-build.12`. Las notas incluyen los cambios desde
+  la release anterior.
+- **Pull requests contra `main`**: solo compila y verifica, sin publicar nada. El `.zip` queda como artefacto de la
+  ejecución.
+- **Manual**: también se puede lanzar desde la pestaña *Actions* (*Run workflow*).
+
+Como MCreator no publica sus librerías en Maven, la CI descarga el código fuente de MCreator en la revisión
+`2026.3.41718` y lo compila con el mismo JDK que usa MCreator (JetBrains Runtime 25). El resultado se guarda en
+caché, así que solo se compila la primera vez. Para compilar contra otra versión de MCreator, crea la variable de
+repositorio `MCREATOR_REF` (*Settings → Secrets and variables → Actions → Variables*) con el tag, rama o commit.
+
+La versión base está en `build.gradle` (`baseVersion`); súbela cuando haya cambios importantes.
 
 ## Estructura
 

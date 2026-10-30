@@ -1,0 +1,14 @@
+// Gradle init script applied to the MCreator source build in CI.
+// Adds a task that copies MCreator's runtime libraries, so the plugin can be compiled against
+// the same jars an MCreator installation ships in its lib folder.
+allprojects { project ->
+    project.afterEvaluate {
+        if (project.configurations.findByName('runtimeClasspath') != null) {
+            project.tasks.register('mcpPlusCopyLibs', Copy) {
+                from project.configurations.runtimeClasspath
+                include '*.jar'
+                into project.layout.buildDirectory.dir('mcpplus-lib')
+            }
+        }
+    }
+}
