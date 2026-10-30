@@ -1,0 +1,59 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.mccreatormcp'
+version = '1.0.0'
+
+// Folder of an MCreator 2026.3+ installation (the one containing the lib folder with mcreator.jar).
+// Pass it with -PmcreatorPath=... , the MCREATOR_PATH environment variable, or gradle.properties.
+def mcreatorPath = findProperty('mcreatorPath') ?: System.getenv('MCREATOR_PATH')
+if (mcreatorPath == null) {
+    throw new GradleException('Set the MCreator installation folder with -PmcreatorPath=<path> or MCREATOR_PATH')
+}
+def mcreatorLib = file("${mcreatorPath}/lib")
+if (!new File(mcreatorLib, 'mcreator.jar').isFile()) {
+    throw new GradleException("mcreator.jar not found in ${mcreatorLib}. Point mcreatorPath to the MCreator installation folder")
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // MCreator and its libraries are provided at runtime by MCreator itself
+    compileOnly fileTree(dir: mcreatorLib, include: '*.jar')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // MCreator 2026.3 runs on Java 25
+    options.release = 25
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('plugin.json') {
+        filter { line -> line.replace('"version": "1.0.0"', "\"version\": \"${project.version}\"") }
+    }
+}
+
+tasks.register('pluginZip', Zip) {
+    group = 'build'
+    description = 'Builds the MCreator plugin file'
+    from sourceSets.main.output
+    archiveFileName = "mcreator-mcp-plus-${project.version}.zip"
+    destinationDirectory = layout.buildDirectory.dir('dist')
+}
+
+tasks.register('installPlugin', Copy) {
+    group = 'build'
+    description = 'Copies the plugin into the MCreator user plugins folder (~/.mcreator/plugins)'
+    dependsOn pluginZip
+    from pluginZip
+    into "${System.getProperty('user.home')}/.mcreator/plugins"
+}
+
+tasks.named('build') {
+    dependsOn pluginZip
+}

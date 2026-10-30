@@ -1,0 +1,17 @@
+{
+  "id": "mcreator-mcp-plus",
+  "weight": 10,
+  "supportedversions": [
+    2026003,
+    2026004,
+    202600341718
+  ],
+  "javaplugin": "com.mccreatormcp.McpPlusPlugin",
+  "info": {
+    "name": "MCreator MCP Plus",
+    "version": "1.0.0",
+    "author": "McCreatorMCP",
+    "description": "Extends the built-in MCreator MCP server with additional tools for building quality mods: workspace settings, localization, texture/sound/model/structure import, texture editing, element management, quality audit, history, export, screenshots and vanilla balancing reference. Can also run its own MCP server when the built-in one is disabled.",
+    "credits": "Built on top of the MCreator MCP API"
+  }
+}
