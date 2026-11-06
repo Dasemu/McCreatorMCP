@@ -4,7 +4,8 @@
   "supportedversions": [
     2026003,
     2026004,
-    202600341718
+    202600341718,
+    202600344621
   ],
   "javaplugin": "com.mccreatormcp.McpPlusPlugin",
   "info": {

@@ -1,6 +1,7 @@
 package com.mccreatormcp;
 
 import com.mccreatormcp.tools.*;
+import com.mccreatormcp.util.VsCodeRegistration;
 import net.mcreator.io.mcp.tool.IMcpTool;
 import net.mcreator.io.mcp.transport.HttpMcpTransport;
 import net.mcreator.plugin.JavaPlugin;
@@ -62,6 +63,7 @@ public class McpPlusPlugin extends JavaPlugin {
 		addListener(ApplicationFullyLoadedEvent.class, event -> {
 			if (PreferencesManager.PREFERENCES.integrations.mcpEnable.get()) {
 				LOG.info("Built-in MCP server is enabled, MCP Plus tools are served by it");
+				registerInEditors(PreferencesManager.PREFERENCES.integrations.mcpPort.get());
 				return;
 			}
 			if ("false".equalsIgnoreCase(setting("MCREATOR_MCP_PLUS_STANDALONE", "true"))) {
@@ -99,9 +101,21 @@ public class McpPlusPlugin extends JavaPlugin {
 			standaloneServer = new MCreatorMcp(new HttpMcpTransport(port), new ActiveMCreatorSupplier(application));
 			standaloneServer.start();
 			LOG.info("MCP Plus standalone MCP server started at http://127.0.0.1:{}/mcp", port);
+			registerInEditors(port);
 		} catch (Exception e) {
 			LOG.error("Failed to start MCP Plus standalone MCP server on port {}", port, e);
 		}
+	}
+
+	/**
+	 * Adds the running MCP server to the user MCP configuration of installed VS Code variants, so they can use it
+	 * without manual setup. Turned off with MCREATOR_MCP_PLUS_VSCODE=false.
+	 */
+	private static void registerInEditors(int port) {
+		if ("false".equalsIgnoreCase(setting("MCREATOR_MCP_PLUS_VSCODE", "true")))
+			return;
+		// the MCP transports bind to the IPv4 loopback address, so avoid localhost resolving to ::1
+		VsCodeRegistration.registerInstalledEditors("http://127.0.0.1:" + port + "/mcp");
 	}
 
 	public static List<IMcpTool> createTools(Supplier<MCreator> mcreator) {

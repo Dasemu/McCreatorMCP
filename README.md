@@ -22,9 +22,10 @@ desactivado, el plugin arranca su propio servidor (tools oficiales + tools del p
    plugins del usuario (`~/.mcreator/plugins` en Linux/macOS, `C:\Users\<usuario>\.mcreator\plugins` en Windows).
 3. Reinicia MCreator.
 
-> MCreator solo carga plugins de versiones declaradas en `supportedversions` (`plugin.json`). Si usas una snapshot
-> distinta de `2026.3.41718`, añade su número de versión ahí o arranca MCreator con la variable de entorno
-> `MCREATOR_PLUGINS_DEV=1`.
+> MCreator solo carga plugins de versiones declaradas en `supportedversions` (`plugin.json`). Las versiones
+> estables se aceptan por versión mayor (`2026003` = 2026.3), pero las **EAP/snapshots** necesitan su número exacto.
+> Ahora mismo están declaradas `2026.3.41718` y `2026.3.44621`. Si sale una EAP nueva, añade su número
+> (`2026.3.NNNNN` se escribe `2026003NNNNN`) o arranca MCreator con la variable de entorno `MCREATOR_PLUGINS_DEV=1`.
 
 ## Activar el servidor MCP
 
@@ -43,13 +44,31 @@ Hay dos modos, y el plugin elige uno solo:
 
 ### Conectar un cliente
 
+**VS Code se configura solo.** Al arrancar MCreator, el plugin añade (o actualiza) el servidor `mcreator` en el
+`mcp.json` de usuario de VS Code, VS Code Insiders y VSCodium, si están instalados, con la URL y el puerto reales
+del servidor activo:
+
+| Sistema | Fichero |
+|---------|---------|
+| Windows | `%APPDATA%\Code\User\mcp.json` |
+| macOS | `~/Library/Application Support/Code/User/mcp.json` |
+| Linux | `~/.config/Code/User/mcp.json` |
+
+- Solo toca la entrada `mcreator`; el resto de servidores y opciones se conservan. Antes de modificar un fichero
+  existente guarda una copia en `mcp.json.bak`, porque al reescribirlo se pierden los comentarios.
+- Si el fichero no es JSON válido, no lo toca.
+- Si cambias el puerto o el modo, la entrada se actualiza en el siguiente arranque.
+- Para desactivarlo, arranca MCreator con la variable de entorno `MCREATOR_MCP_PLUS_VSCODE=false`.
+
+En VS Code, el servidor aparece en la vista de servidores MCP y lo usa el modo agente de Copilot.
+
 Claude Code:
 
 ```bash
 claude mcp add --transport http mcreator http://localhost:3025/mcp
 ```
 
-Clientes con soporte HTTP (Cursor, VS Code…), en su configuración MCP:
+Otros clientes con soporte HTTP (Cursor…), en su configuración MCP:
 
 ```json
 { "mcpServers": { "mcreator": { "url": "http://localhost:3025/mcp" } } }
